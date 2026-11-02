@@ -53,6 +53,7 @@ class MasterData extends BaseController
             'merk'        => $this->request->getPost('merk'),
             'tipe'        => $this->request->getPost('tipe'),
             'deskripsi'   => $this->request->getPost('deskripsi'),
+            'spesifikasi' => $this->request->getPost('spesifikasi'),
         ]);
 
         return redirect()->to(base_url('kasir/master-data'))->with('success', 'Produk inventori berhasil ditambahkan.');

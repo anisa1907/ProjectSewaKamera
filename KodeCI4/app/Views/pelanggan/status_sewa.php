@@ -6,6 +6,8 @@
     <p class="text-muted">Pantau status konfirmasi pemesanan, verifikasi pembayaran, dan cetak invoice QRIS Anda.</p>
 </div>
 
+<?php if(session()->getFlashdata('error')): ?><div class="alert alert-danger"><?= esc(session()->getFlashdata('error')) ?></div><?php endif ?>
+<?php if(session()->getFlashdata('success')): ?><div class="alert alert-success"><?= esc(session()->getFlashdata('success')) ?></div><?php endif ?>
 <div class="card card-custom p-0 overflow-hidden">
     <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
@@ -48,7 +50,13 @@
                             <td>
                                 <div class="d-flex align-items-center gap-2">
                                     <span class="badge bg-secondary-subtle text-secondary"><?= esc($s['metode'] ?? 'QRIS') ?></span>
-                                    <?php if ($s['status_pembayaran'] === 'terbayar'): ?>
+                                    <?php $refund = $refundBySewa[$s['id_sewa']] ?? null; ?>
+                                    <?php if ($s['status']==='dibatalkan' && $refund): ?>
+                                        <?php $refundLabels=['perlu_verifikasi'=>'Bukti transfer diperiksa','menunggu_refund'=>'Menunggu refund 100%','selesai'=>'Dana dikembalikan','tidak_ada_dana'=>'Tidak ada dana diterima']; ?>
+                                        <span class="badge bg-info-subtle text-dark"><?= esc($refundLabels[$refund['status']] ?? $refund['status']) ?></span>
+                                    <?php elseif ($s['status']==='dibatalkan'): ?>
+                                        <span class="badge bg-secondary">Pembayaran dibatalkan</span>
+                                    <?php elseif ($s['status_pembayaran'] === 'terbayar'): ?>
                                         <span class="badge bg-success-subtle text-success">Terbayar</span>
                                     <?php elseif ($s['status_pembayaran'] === 'ditolak'): ?>
                                         <span class="badge bg-danger-subtle text-danger">Ditolak</span>
@@ -74,6 +82,18 @@
                                 <a href="<?= base_url('pelanggan/invoice/' . $s['id_sewa']) ?>" class="btn btn-outline-primary btn-sm rounded-pill px-3">
                                     <i class="bi bi-printer me-1"></i> Cetak Invoice / QRIS
                                 </a>
+                                <?php $p = $statusPengajuan[$s['id_sewa']] ?? null; ?>
+                                <?php if ($p): ?>
+                                    <div class="small mt-2">Pengajuan: <strong><?= esc($p['status']) ?></strong></div>
+                                    <?php if ($p['status'] === 'ditolak'): ?><div class="small text-danger">Catatan kasir: <?= esc($p['catatan_kasir'] ?? '-') ?></div><?php endif ?>
+                                <?php endif ?>
+                                <?php if (in_array($s['status'], ['menunggu','dikonfirmasi'], true) && (!$p || $p['status'] === 'ditolak')): ?>
+                                    <form action="<?= base_url('pelanggan/status-sewa/batalkan/' . $s['id_sewa']) ?>" method="post" class="mt-2 text-start">
+                                        <?= csrf_field() ?>
+                                        <textarea name="alasan" class="form-control form-control-sm mb-1" required minlength="10" maxlength="1000" placeholder="Alasan pembatalan (minimal 10 karakter)"></textarea>
+                                        <button class="btn btn-outline-danger btn-sm" onclick="return confirm('Kirim permohonan pembatalan kepada kasir?')">Ajukan Pembatalan</button>
+                                    </form>
+                                <?php endif ?>
                             </td>
                         </tr>
                     <?php endforeach; ?>

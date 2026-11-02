@@ -1,3 +1,4 @@
+<?php helper('refund_status'); ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -92,7 +93,7 @@
                         <td><?= esc($row['nama_pelanggan']) ?></td>
                         <td><?= esc($row['nama_kasir'] ?? '-') ?></td>
                         <td><?= esc($row['metode'] ?? 'QRIS') ?></td>
-                        <td><?= strtoupper(esc($row['status_pembayaran'] ?? 'menunggu')) ?></td>
+                        <td><?php [$bayarLabel] = status_bayar_terpadu($row); ?><?= esc($bayarLabel) ?></td>
                         <td class="text-end fw-bold">Rp <?= number_format($row['total_harga'], 0, ',', '.') ?></td>
                         <td class="text-end"><?= (!empty($row['denda']) && (float)$row['denda'] > 0) ? 'Rp ' . number_format($row['denda'], 0, ',', '.') : '-' ?></td>
                     </tr>

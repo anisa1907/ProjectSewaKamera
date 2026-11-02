@@ -1,3 +1,4 @@
+<?php helper('refund_status'); ?>
 <?= $this->extend('layout/main') ?>
 
 <?= $this->section('content') ?>
@@ -6,6 +7,7 @@
     <p class="text-muted">Pantau status armada kamera, transaksi aktif, dan antrean verifikasi pembayaran.</p>
 </div>
 
+<?= $this->include('kasir/_pengajuan_notifikasi') ?>
 <!-- Stat Cards -->
 <div class="row g-3 mb-4">
     <div class="col-sm-6 col-xl-3">
@@ -94,9 +96,8 @@
                                     <td>Rp <?= number_format($tx['total_harga'], 0, ',', '.') ?></td>
                                     <td><span class="badge bg-secondary-subtle text-secondary"><?= esc($tx['metode'] ?? '-') ?></span></td>
                                     <td>
-                                        <span class="badge <?= ($tx['status_pembayaran'] ?? '') === 'terbayar' ? 'bg-success' : 'bg-warning text-dark' ?>">
-                                            <?= esc($tx['status_pembayaran'] ?? 'menunggu') ?>
-                                        </span>
+                                        <?php [$bayarLabel, $bayarClass] = status_bayar_terpadu($tx); ?>
+                                <span class="badge <?= esc($bayarClass) ?>"><?= esc($bayarLabel) ?></span>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>

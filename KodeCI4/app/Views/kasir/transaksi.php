@@ -1,8 +1,10 @@
+<?php helper('refund_status'); ?>
 <?= $this->extend('layout/main') ?>
 
 <?= $this->section('content') ?>
+<?= $this->include('kasir/_pengajuan_notifikasi') ?>
 <div class="mb-4">
-    <h2 class="fw-bold text-dark mb-1">Pengelolaan Transaksi Sewa & Pembayaran</h2>
+    <h2 class="fw-bold text-dark mb-1">Transaksi Hari Ini</h2>
     <p class="text-muted">Proses verifikasi pembayaran, serah terima unit beserta jaminan, dan penerimaan pengembalian.</p>
 </div>
 
@@ -14,6 +16,7 @@
                     <th class="ps-4">No. Transaksi</th>
                     <th>Pelanggan</th>
                     <th>Jadwal Sewa</th>
+                    <th>Unit Disewa</th>
                     <th>Jaminan</th>
                     <th>Total & Metode</th>
                     <th>Status Bayar</th>
@@ -24,10 +27,11 @@
             <tbody>
                 <?php if (empty($daftarSewa)): ?>
                     <tr>
-                        <td colspan="8" class="text-center py-5 text-muted">Belum ada data transaksi penyewaan.</td>
+                        <td colspan="9" class="text-center py-5 text-muted">Belum ada data transaksi penyewaan.</td>
                     </tr>
                 <?php else: ?>
                     <?php foreach ($daftarSewa as $s): ?>
+                        <?php $sedangDiajukan = isset($pengajuanAktif[$s['id_sewa']]); ?>
                         <tr>
                             <td class="ps-4 font-monospace fw-bold text-dark">
                                 #INV-<?= str_pad($s['id_sewa'], 5, '0', STR_PAD_LEFT) ?>
@@ -39,6 +43,7 @@
                                 <small class="d-block text-muted">Mulai: <?= date('d M Y', strtotime($s['tanggal_sewa'])) ?></small>
                                 <small class="d-block text-muted">Kembali: <?= date('d M Y', strtotime($s['tanggal_kembali'])) ?></small>
                             </td>
+                            <td><?php foreach ((new \App\Models\DetailSewaModel())->getItemsBySewa($s['id_sewa']) as $item): ?><?= esc($item['kode_unit']) ?><br><?php endforeach ?></td>
                             <td>
                                 <span class="badge bg-secondary-subtle text-secondary font-monospace">
                                     <?= esc($s['jaminan']) ?>
@@ -49,18 +54,13 @@
                                 <span class="badge bg-light text-dark border"><?= esc($s['metode'] ?? 'QRIS') ?></span>
                             </td>
                             <td>
-                                <?php if ($s['status_pembayaran'] === 'terbayar'): ?>
-                                    <span class="badge bg-success-subtle text-success">Terbayar</span>
-                                <?php elseif ($s['status_pembayaran'] === 'ditolak'): ?>
-                                    <span class="badge bg-danger-subtle text-danger">Ditolak</span>
-                                <?php else: ?>
-                                    <span class="badge bg-warning-subtle text-warning">Menunggu Konfirmasi</span>
-                                <?php endif; ?>
+                                <?php [$bayarLabel, $bayarClass] = status_bayar_terpadu($s); ?>
+                                <span class="badge <?= esc($bayarClass) ?>"><?= esc($bayarLabel) ?></span>
                             </td>
                             <td>
                                 <?php if ($s['status'] === 'menunggu'): ?>
                                     <span class="badge bg-secondary">Menunggu</span>
-                                <?php elseif ($s['status'] === 'dikonfirmasi'): ?>
+                                <?php elseif ($s['status'] === 'dikonfirmasi' && !$sedangDiajukan): ?>
                                     <span class="badge bg-info text-dark">Dikonfirmasi (Siap Ambil)</span>
                                 <?php elseif ($s['status'] === 'berlangsung'): ?>
                                     <span class="badge bg-primary">Unit Sedang Disewa</span>
@@ -77,12 +77,13 @@
                                     </a>
 
                                     <!-- 1. Tombol Verifikasi Pembayaran jika Menunggu -->
-                                    <?php if ($s['status_pembayaran'] === 'menunggu'): ?>
-                                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalBayar<?= $s['id_sewa'] ?>">
+                                    <?php if ($s['status_pembayaran'] === 'menunggu' && $s['status'] === 'menunggu' && !$sedangDiajukan): ?>
+                                        <button class="btn btn-success btn-sm" data-verifikasi-sewa="<?= (int)$s['id_sewa'] ?>" data-bs-toggle="modal" data-bs-target="#modalBayar<?= $s['id_sewa'] ?>">
                                             <i class="bi bi-check-lg me-1"></i> Verifikasi Bayar
                                         </button>
                                     <?php endif; ?>
 
+                                    <?php if ($sedangDiajukan): ?><span class="badge bg-danger">Pembatalan menunggu keputusan — verifikasi dan serah unit ditahan</span><?php endif; ?>
                                     <!-- 2. Tombol Serah Terima Unit jika sudah bayar dan siap ambil -->
                                     <?php if ($s['status_pembayaran'] === 'terbayar' && $s['status'] === 'dikonfirmasi'): ?>
                                         <form action="<?= base_url('kasir/transaksi/serah-unit/' . $s['id_sewa']) ?>" method="POST" class="d-inline" onsubmit="return confirm('Apakah jaminan <?= esc($s['jaminan']) ?> telah diterima dan unit siap diserahkan?')">
@@ -123,6 +124,7 @@
                                                             <option value="ditolak">Ditolak (Pembayaran Gagal / Palsu)</option>
                                                         </select>
                                                     </div>
+                                                    <label>Alasan penolakan (wajib jika ditolak)</label><textarea name="alasan_pembatalan" class="form-control" placeholder="Tuliskan alasan pembatalan"></textarea>
                                                 </div>
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>

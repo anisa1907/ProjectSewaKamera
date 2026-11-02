@@ -1,3 +1,4 @@
+<?php helper('refund_status'); ?>
 <?= $this->extend('layout/main') ?>
 
 <?= $this->section('content') ?>
@@ -70,9 +71,8 @@
                             <td><?= date('d M Y', strtotime($tx['tanggal_sewa'])) ?> s/d <?= date('d M Y', strtotime($tx['tanggal_kembali'])) ?></td>
                             <td class="fw-bold">Rp <?= number_format($tx['total_harga'], 0, ',', '.') ?></td>
                             <td>
-                                <span class="badge <?= ($tx['status_pembayaran'] ?? '') === 'terbayar' ? 'bg-success' : 'bg-warning text-dark' ?>">
-                                    <?= esc($tx['status_pembayaran'] ?? 'menunggu') ?>
-                                </span>
+                                <?php [$bayarLabel, $bayarClass] = status_bayar_terpadu($tx); ?>
+                                <span class="badge <?= esc($bayarClass) ?>"><?= esc($bayarLabel) ?></span>
                             </td>
                             <td>
                                 <span class="badge bg-secondary-subtle text-secondary"><?= esc($tx['status']) ?></span>

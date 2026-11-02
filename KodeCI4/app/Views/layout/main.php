@@ -126,7 +126,10 @@
                                 <i class="bi bi-box-seam me-1"></i> Master Data
                             </a>
                         </li>
-                        <li class="nav-item">
+                        <li class="nav-item"><a class="nav-link" href="<?= base_url('kasir/sewa-langsung') ?>">Sewa Langsung</a></li>
+<li class="nav-item"><a class="nav-link" href="<?= base_url('kasir/histori') ?>">Histori & Pengembalian</a></li>
+<li class="nav-item"><a class="nav-link" href="<?= base_url('kasir/durasi') ?>">Durasi Sewa</a></li>
+<li class="nav-item">
                             <a class="nav-link <?= uri_string() === 'kasir/transaksi' ? 'active' : '' ?>" href="<?= base_url('kasir/transaksi') ?>">
                                 <i class="bi bi-cash-stack me-1"></i> Transaksi & Sewa
                             </a>

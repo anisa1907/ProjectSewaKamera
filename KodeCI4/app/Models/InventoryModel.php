@@ -10,7 +10,7 @@ class InventoryModel extends Model
     protected $primaryKey       = 'id_inv';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
-    protected $allowedFields    = ['id_kategori', 'kode_barang', 'nama_barang', 'merk', 'tipe', 'deskripsi'];
+    protected $allowedFields    = ['id_kategori', 'kode_barang', 'nama_barang', 'merk', 'tipe', 'deskripsi', 'spesifikasi'];
 
     protected $validationRules = [
         'id_kategori' => 'required|is_natural_no_zero',

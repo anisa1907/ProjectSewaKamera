@@ -151,6 +151,8 @@
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Deskripsi</label>
                             <textarea name="deskripsi" class="form-control rounded-3" rows="3"></textarea>
+                            <label class="form-label small fw-semibold mt-2">Detail Spesifikasi Item</label>
+                            <textarea name="spesifikasi" class="form-control rounded-3" rows="3" placeholder="Sensor, resolusi, lensa, baterai, kelengkapan..."></textarea>
                         </div>
                         <button type="submit" class="btn btn-primary-custom w-100">Simpan Produk</button>
                     </form>

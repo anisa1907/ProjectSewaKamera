@@ -1,3 +1,4 @@
+<?php helper('refund_status'); ?>
 <?= $this->extend('layout/main') ?>
 
 <?= $this->section('content') ?>
@@ -17,7 +18,8 @@
 
 <!-- Filter Periode -->
 <div class="card card-custom p-4 mb-4">
-    <form action="<?= base_url('owner/laporan') ?>" method="GET" class="row g-3 align-items-end">
+    <form method="get" class="row g-2 mb-3"><div class="col"><input class="form-control" name="tahun" placeholder="Tahun" value="<?= esc($_GET['tahun'] ?? '') ?>"></div><div class="col"><select class="form-select" name="bulan"><option value="">Semua bulan</option><?php for($i=1;$i<=12;$i++): ?><option value="<?= $i ?>" <?= ($_GET['bulan']??'')==(string)$i?'selected':'' ?>><?= $i ?></option><?php endfor ?></select></div><div class="col"><select class="form-select" name="unit"><option value="">Semua unit</option><?php foreach($unitOptions as $u): ?><option value="<?= $u['id_unit'] ?>" <?= ($_GET['unit']??'')==(string)$u['id_unit']?'selected':'' ?>><?= esc($u['kode_unit']) ?></option><?php endforeach ?></select></div><div class="col"><select class="form-select" name="status"><option value="">Semua status</option><?php foreach(['menunggu','dikonfirmasi','berlangsung','selesai','dibatalkan'] as $v): ?><option value="<?= $v ?>" <?= ($_GET['status']??'')===$v?'selected':'' ?>><?= ucfirst($v) ?></option><?php endforeach ?></select></div><div class="col"><button class="btn btn-primary">Filter</button></div></form>
+<form action="<?= base_url('owner/laporan') ?>" method="GET" class="row g-3 align-items-end">
         <div class="col-md-4">
             <label class="form-label small fw-semibold">Tanggal Awal</label>
             <input type="date" name="tgl_awal" class="form-control rounded-3" value="<?= esc($tglAwal) ?>" required>
@@ -81,9 +83,8 @@
                             <td class="fw-bold">Rp <?= number_format($row['total_harga'], 0, ',', '.') ?></td>
                             <td>
                                 <span class="badge bg-secondary-subtle text-secondary me-1"><?= esc($row['metode'] ?? 'QRIS') ?></span>
-                                <span class="badge <?= ($row['status_pembayaran'] ?? '') === 'terbayar' ? 'bg-success' : 'bg-warning text-dark' ?>">
-                                    <?= esc($row['status_pembayaran'] ?? 'menunggu') ?>
-                                </span>
+                                <?php [$bayarLabel, $bayarClass] = status_bayar_terpadu($row); ?>
+                                <span class="badge <?= esc($bayarClass) ?>"><?= esc($bayarLabel) ?></span>
                             </td>
                             <td>
                                 <?php if (!empty($row['denda']) && (float)$row['denda'] > 0): ?>

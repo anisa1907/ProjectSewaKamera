@@ -24,6 +24,7 @@ $routes->group('pelanggan', ['filter' => ['auth', 'role:pelanggan']], function (
     $routes->get('sewa/(:num)', 'Pelanggan\Sewa::checkout/$1');
     $routes->post('sewa/process', 'Pelanggan\Sewa::processCheckout');
     $routes->get('status-sewa', 'Pelanggan\StatusSewa::index');
+    $routes->post('status-sewa/batalkan/(:num)', 'Pelanggan\StatusSewa::ajukanPembatalan/$1');
     $routes->get('invoice/(:num)', 'Pelanggan\StatusSewa::invoice/$1');
 });
 
@@ -37,6 +38,13 @@ $routes->group('kasir', ['filter' => ['auth', 'role:kasir']], function ($routes)
     $routes->post('master-data/inventory', 'Kasir\MasterData::saveInventory');
     $routes->post('master-data/unit', 'Kasir\MasterData::saveUnit');
 
+    $routes->get('sewa-langsung', 'Kasir\Transaksi::directRental');
+    $routes->post('sewa-langsung', 'Kasir\Transaksi::simpanDirectRental');
+    $routes->get('notifikasi-pembatalan', 'Kasir\Transaksi::notifikasiPembatalan');
+    $routes->get('histori', 'Kasir\Transaksi::histori');
+    $routes->post('pembatalan/keputusan/(:num)', 'Kasir\Transaksi::keputusanPembatalan/$1');
+    $routes->post('refund/proses/(:num)', 'Kasir\Transaksi::prosesRefund/$1');
+    $routes->get('durasi', 'Kasir\Transaksi::durasi');
     // Transaksi & Pembayaran
     $routes->get('transaksi', 'Kasir\Transaksi::index');
     $routes->post('transaksi/verifikasi-bayar/(:num)', 'Kasir\Transaksi::verifikasiPembayaran/$1');

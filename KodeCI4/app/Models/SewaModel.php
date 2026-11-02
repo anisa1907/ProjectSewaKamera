@@ -18,6 +18,7 @@ class SewaModel extends Model
         'jaminan',
         'total_harga',
         'status',
+        'sumber_transaksi', 'waktu_mulai', 'waktu_selesai', 'alasan_pembatalan', 'dibatalkan_pada',
     ];
 
     public function getSewaDetail($id_sewa = null)
