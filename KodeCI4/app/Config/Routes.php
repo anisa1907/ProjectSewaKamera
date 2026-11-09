@@ -41,6 +41,7 @@ $routes->group('kasir', ['filter' => ['auth', 'role:kasir']], function ($routes)
     $routes->get('master-data', 'Kasir\MasterData::index');
     $routes->post('master-data/kategori', 'Kasir\MasterData::saveKategori');
     $routes->post('master-data/inventory', 'Kasir\MasterData::saveInventory');
+    $routes->post('master-data/inventory/(:num)/gambar', 'Kasir\MasterData::uploadGambar/$1');
     $routes->post('master-data/unit', 'Kasir\MasterData::saveUnit');
 
     $routes->get('sewa-langsung', 'Kasir\Transaksi::directRental');

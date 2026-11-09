@@ -1,6 +1,15 @@
 <?= $this->extend('layout/main') ?>
 
 <?= $this->section('content') ?>
+<?php if (session()->getFlashdata('success')): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert"><?= esc(session()->getFlashdata('success')) ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+<?php endif; ?>
+<?php if (session()->getFlashdata('error')): ?>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert"><?= esc(session()->getFlashdata('error')) ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+<?php endif; ?>
+<?php if (session()->getFlashdata('warning')): ?>
+    <div class="alert alert-warning alert-dismissible fade show" role="alert"><?= esc(session()->getFlashdata('warning')) ?><button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+<?php endif; ?>
 <div class="mb-4">
     <h2 class="fw-bold text-dark mb-1">Pengelolaan Master Data</h2>
     <p class="text-muted">Kelola Kategori, Produk Inventori, dan Unit Fisik Individual Kamera/Drone.</p>
@@ -121,7 +130,7 @@
             <div class="col-lg-4">
                 <div class="card card-custom p-4">
                     <h5 class="fw-bold text-dark mb-3">Tambah Produk Inventori</h5>
-                    <form action="<?= base_url('kasir/master-data/inventory') ?>" method="POST">
+                    <form action="<?= base_url('kasir/master-data/inventory') ?>" method="POST" enctype="multipart/form-data">
                         <?= csrf_field() ?>
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Kategori</label>
@@ -154,6 +163,11 @@
                             <label class="form-label small fw-semibold mt-2">Detail Spesifikasi Item</label>
                             <textarea name="spesifikasi" class="form-control rounded-3" rows="3" placeholder="Sensor, resolusi, lensa, baterai, kelengkapan..."></textarea>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Foto Produk (opsional)</label>
+                            <input type="file" name="gambar_produk" class="form-control rounded-3" accept="image/jpeg,image/png,image/webp">
+                            <small class="text-muted">JPG, PNG, atau WebP. Maksimal 2 MB. File disimpan di folder public/uploads/produk, bukan database.</small>
+                        </div>
                         <button type="submit" class="btn btn-primary-custom w-100">Simpan Produk</button>
                     </form>
                 </div>
@@ -171,6 +185,7 @@
                                     <th class="ps-4">Kode</th>
                                     <th>Nama Produk</th>
                                     <th>Merk & Tipe</th>
+                                    <th>Foto Produk</th>
                                     <th>Kategori</th>
                                 </tr>
                             </thead>
@@ -180,6 +195,13 @@
                                         <td class="ps-4 font-monospace fw-bold"><?= esc($iv['kode_barang']) ?></td>
                                         <td class="fw-bold"><?= esc($iv['nama_barang']) ?></td>
                                         <td><?= esc($iv['merk']) ?> - <?= esc($iv['tipe']) ?></td>
+                                        <td>
+                                            <form action="<?= base_url('kasir/master-data/inventory/' . $iv['id_inv'] . '/gambar') ?>" method="POST" enctype="multipart/form-data" class="d-flex flex-column gap-1">
+                                                <?= csrf_field() ?>
+                                                <input type="file" name="gambar_produk" class="form-control form-control-sm" accept="image/jpeg,image/png,image/webp" required>
+                                                <button type="submit" class="btn btn-outline-primary btn-sm">Upload / Ganti</button>
+                                            </form>
+                                        </td>
                                         <td><span class="badge bg-secondary-subtle text-secondary"><?= esc($iv['nama_kategori']) ?></span></td>
                                     </tr>
                                 <?php endforeach; ?>

@@ -46,6 +46,7 @@ class DatabaseSeeder extends Seeder
             ['id_kategori' => 2, 'nama_kategori' => 'Kamera Digicam', 'deskripsi' => 'Kamera saku digital praktis, trend vintage & compact'],
             ['id_kategori' => 3, 'nama_kategori' => 'Lensa Kamera', 'deskripsi' => 'Lensa fix, zoom, dan telephoto untuk berbagai mount'],
             ['id_kategori' => 4, 'nama_kategori' => 'Drone', 'deskripsi' => 'Wahana tanpa awak untuk videografi & pemetaan udara'],
+            ['id_kategori' => 5, 'nama_kategori' => 'Kamera Mirrorless', 'deskripsi' => 'Kamera tanpa cermin dengan lensa yang dapat diganti'],
         ];
 
         foreach ($kategori as $kat) {
@@ -68,7 +69,7 @@ class DatabaseSeeder extends Seeder
             ],
             [
                 'id_inv'      => 2,
-                'id_kategori' => 1,
+                'id_kategori' => 5,
                 'kode_barang' => 'BRG-A7M3',
                 'nama_barang' => 'Sony Alpha A7 III Body',
                 'merk'        => 'Sony',
