@@ -21,6 +21,11 @@ $routes->group('auth', function ($routes) {
 // Pelanggan Routes
 $routes->group('pelanggan', ['filter' => ['auth', 'role:pelanggan']], function ($routes) {
     $routes->get('katalog', 'Pelanggan\Katalog::index');
+    $routes->get('keranjang', 'Pelanggan\Keranjang::index');
+    $routes->post('keranjang/tambah', 'Pelanggan\Keranjang::tambah');
+    $routes->post('keranjang/hapus/(:num)', 'Pelanggan\Keranjang::hapus/$1');
+    $routes->post('keranjang/kosongkan', 'Pelanggan\Keranjang::kosongkan');
+    $routes->get('checkout', 'Pelanggan\Sewa::checkout');
     $routes->get('sewa/(:num)', 'Pelanggan\Sewa::checkout/$1');
     $routes->post('sewa/process', 'Pelanggan\Sewa::processCheckout');
     $routes->get('status-sewa', 'Pelanggan\StatusSewa::index');
@@ -53,6 +58,7 @@ $routes->group('kasir', ['filter' => ['auth', 'role:kasir']], function ($routes)
 
     // Maintenance
     $routes->get('maintenance', 'Kasir\Maintenance::index');
+    $routes->post('maintenance/mulai', 'Kasir\Maintenance::mulai');
     $routes->post('maintenance/selesai/(:num)', 'Kasir\Maintenance::selesai/$1');
 });
 

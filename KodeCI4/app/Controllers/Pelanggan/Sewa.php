@@ -23,90 +23,101 @@ class Sewa extends BaseController
         $this->pembayaranModel = new PembayaranModel();
     }
 
-    public function checkout($id_unit)
+    public function checkout($id_unit = null)
     {
-        $unit = $this->unitModel->select('unit.*, inventory.nama_barang, inventory.kode_barang, inventory.merk, inventory.tipe, kategori.nama_kategori')
-                                ->join('inventory', 'inventory.id_inv = unit.id_inv')
-                                ->join('kategori', 'kategori.id_kategori = inventory.id_kategori')
-                                ->where('unit.id_unit', $id_unit)
-                                ->where('unit.status_unit', 'tersedia')
-                                ->first();
+        // Tetap mendukung URL checkout lama untuk satu unit.
+        if ($id_unit !== null) {
+            $ids = [(int) $id_unit];
+        } else {
+            $ids = array_values(array_unique(array_map('intval', session()->get('keranjang_sewa') ?? [])));
+        }
+        if (!$ids) return redirect()->to(base_url('pelanggan/katalog'))->with('error', 'Keranjang masih kosong.');
 
-        if (!$unit) {
-            return redirect()->to(base_url('pelanggan/katalog'))->with('error', 'Unit tidak ditemukan atau sedang tidak tersedia.');
+        $units = $this->unitModel->select('unit.*, inventory.nama_barang, inventory.kode_barang, inventory.merk, inventory.tipe, kategori.nama_kategori')
+            ->join('inventory', 'inventory.id_inv = unit.id_inv')
+            ->join('kategori', 'kategori.id_kategori = inventory.id_kategori')
+            ->whereIn('unit.id_unit', $ids)->where('unit.status_unit', 'tersedia')->findAll();
+        if (count($units) !== count($ids)) {
+            return redirect()->to(base_url('pelanggan/keranjang'))->with('error', 'Ada unit dalam keranjang yang sudah tidak tersedia. Periksa kembali keranjang.');
         }
 
         return view('pelanggan/checkout', [
             'title' => 'Formulir Pemesanan Sewa',
-            'unit'  => $unit,
+            'units' => $units,
+            'unit' => $units[0], // kompatibilitas tampilan lama
+            'fromCart' => $id_unit === null,
         ]);
     }
 
     public function processCheckout()
     {
-        $idPelanggan    = session()->get('id_user');
-        $idUnit         = $this->request->getPost('id_unit');
-        $tanggalSewa    = $this->request->getPost('tanggal_sewa');
+        $idPelanggan = session()->get('id_user');
+        $postedIds = $this->request->getPost('id_unit');
+        if (!is_array($postedIds)) $postedIds = [$postedIds];
+        $ids = array_values(array_unique(array_filter(array_map('intval', $postedIds))));
+        $tanggalSewa = $this->request->getPost('tanggal_sewa');
         $tanggalKembali = $this->request->getPost('tanggal_kembali');
-        $jaminan        = $this->request->getPost('jaminan');
-        $metode         = $this->request->getPost('metode');
+        $jaminan = $this->request->getPost('jaminan');
+        $metode = $this->request->getPost('metode');
 
-        if (empty($idUnit) || empty($tanggalSewa) || empty($tanggalKembali) || empty($jaminan) || empty($metode)) {
-            return redirect()->back()->withInput()->with('error', 'Semua field formulir wajib diisi.');
+        if (!$idPelanggan || !$ids || !$tanggalSewa || !$tanggalKembali || !$jaminan || !$metode) {
+            return redirect()->back()->withInput()->with('error', 'Data pemesanan belum lengkap.');
+        }
+        if (!in_array($jaminan, ['KTP', 'KK', 'Akta'], true) || !in_array($metode, ['QRIS', 'Cash'], true)) {
+            return redirect()->back()->withInput()->with('error', 'Pilihan jaminan atau pembayaran tidak valid.');
+        }
+        $start = \DateTime::createFromFormat('Y-m-d', $tanggalSewa);
+        $end = \DateTime::createFromFormat('Y-m-d', $tanggalKembali);
+        $today = date('Y-m-d');
+        if (!$start || !$end || $start->format('Y-m-d') !== $tanggalSewa || $end->format('Y-m-d') !== $tanggalKembali || $tanggalSewa < $today || $tanggalKembali <= $tanggalSewa) {
+            return redirect()->back()->withInput()->with('error', 'Tanggal sewa tidak valid. Tanggal kembali harus setelah tanggal mulai.');
         }
 
-        $unit = $this->unitModel->where('id_unit', $idUnit)->where('status_unit', 'tersedia')->first();
-        if (!$unit) {
-            return redirect()->to(base_url('pelanggan/katalog'))->with('error', 'Unit kamera telah dipesan atau tidak tersedia.');
+        $units = $this->unitModel->whereIn('id_unit', $ids)->where('status_unit', 'tersedia')->findAll();
+        if (count($units) !== count($ids)) return redirect()->to(base_url('pelanggan/keranjang'))->with('error', 'Satu atau lebih unit sudah tidak tersedia.');
+
+        $days = (int) $start->diff($end)->days;
+        $totalHarga = 0;
+        $details = [];
+        foreach ($units as $unit) {
+            $subtotal = (float) $unit['harga_sewa'] * $days;
+            $totalHarga += $subtotal;
+            $details[] = ['id_unit' => $unit['id_unit'], 'harga_sewa' => $unit['harga_sewa'], 'subtotal' => $subtotal];
         }
-
-        // Hitung durasi hari
-        $dStart = new \DateTime($tanggalSewa);
-        $dEnd   = new \DateTime($tanggalKembali);
-        $diff   = $dStart->diff($dEnd);
-        $days   = max(1, $diff->days);
-
-        $hargaPerHari = (float)$unit['harga_sewa'];
-        $totalHarga   = $hargaPerHari * $days;
 
         $db = \Config\Database::connect();
-        $db->transStart();
-
-        // 1. Simpan Sewa
-        $this->sewaModel->insert([
-            'id_user'         => null, // Belum ada kasir yang menangani
-            'id_pelanggan'    => $idPelanggan,
-            'tanggal_sewa'    => $tanggalSewa,
-            'tanggal_kembali' => $tanggalKembali,
-            'jaminan'         => $jaminan,
-            'total_harga'     => $totalHarga,
-            'status'          => 'menunggu',
-        ]);
-        $idSewa = $this->sewaModel->getInsertID();
-
-        // 2. Simpan Detail Sewa
-        $this->detailSewaModel->insert([
-            'id_sewa'    => $idSewa,
-            'id_unit'    => $idUnit,
-            'harga_sewa' => $hargaPerHari,
-            'subtotal'   => $totalHarga,
-        ]);
-
-        // 3. Simpan Pembayaran (Status: menunggu konfirmasi kasir)
-        $this->pembayaranModel->insert([
-            'id_sewa'       => $idSewa,
-            'metode'        => $metode,
-            'jumlah'        => $totalHarga,
-            'tanggal_bayar' => date('Y-m-d'),
-            'status'        => 'menunggu',
-        ]);
-
-        $db->transComplete();
-
-        if ($db->transStatus() === false) {
+        $db->transBegin();
+        try {
+            $this->sewaModel->insert([
+                'id_user' => null,
+                'id_pelanggan' => $idPelanggan,
+                'tanggal_sewa' => $tanggalSewa,
+                'tanggal_kembali' => $tanggalKembali,
+                'jaminan' => $jaminan,
+                'total_harga' => $totalHarga,
+                'status' => 'menunggu',
+            ]);
+            $idSewa = $this->sewaModel->getInsertID();
+            foreach ($details as $detail) {
+                $detail['id_sewa'] = $idSewa;
+                $this->detailSewaModel->insert($detail);
+            }
+            $this->pembayaranModel->insert([
+                'id_sewa' => $idSewa,
+                'metode' => $metode,
+                'jumlah' => $totalHarga,
+                'tanggal_bayar' => date('Y-m-d'),
+                'status' => 'menunggu',
+            ]);
+            if ($db->transStatus() === false) throw new \RuntimeException('Transaksi database gagal.');
+            $db->transCommit();
+            session()->remove('keranjang_sewa');
+        } catch (\Throwable $e) {
+            $db->transRollback();
+            log_message('error', 'Checkout multi-unit gagal: ' . $e->getMessage());
             return redirect()->back()->withInput()->with('error', 'Gagal memproses pemesanan. Silakan coba kembali.');
         }
 
-        return redirect()->to(base_url('pelanggan/status-sewa'))->with('success', 'Pemesanan berhasil diajukan! Silakan cetak invoice dan lakukan pembayaran.');
+        return redirect()->to(base_url('pelanggan/status-sewa'))->with('success', 'Pemesanan ' . count($units) . ' unit berhasil diajukan. Silakan lanjutkan pembayaran.');
     }
 }

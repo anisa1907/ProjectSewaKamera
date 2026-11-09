@@ -8,6 +8,12 @@
             <p class="text-muted">Pilih unit fisik yang tersedia untuk kebutuhan foto dan video Anda.</p>
         </div>
         <div class="col-md-5">
+            <div class="d-flex justify-content-md-end gap-2 mb-2">
+                <a href="<?= base_url('pelanggan/keranjang') ?>" class="btn btn-outline-primary rounded-3 position-relative">
+                    <i class="bi bi-cart3 me-1"></i> Keranjang
+                    <span class="badge bg-primary ms-1"><?= count(session()->get('keranjang_sewa') ?? []) ?></span>
+                </a>
+            </div>
             <form action="<?= base_url('pelanggan/katalog') ?>" method="GET" class="d-flex gap-2 justify-content-md-end">
                 <select name="kategori" class="form-select w-auto rounded-3 shadow-sm" onchange="this.form.submit()">
                     <option value="">Semua Kategori</option>
@@ -68,9 +74,18 @@
                                 <span class="fw-bold text-dark fs-5">Rp <?= number_format($u['harga_sewa'], 0, ',', '.') ?></span>
                                 <span class="text-muted small">/hari</span>
                             </div>
-                            <a href="<?= base_url('pelanggan/sewa/' . $u['id_unit']) ?>" class="btn btn-primary-custom btn-sm px-3">
-                                Sewa <i class="bi bi-chevron-right ms-1"></i>
-                            </a>
+                            <div class="d-flex flex-column gap-2">
+                                <form action="<?= base_url('pelanggan/keranjang/tambah') ?>" method="POST">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="id_unit" value="<?= esc($u['id_unit']) ?>">
+                                    <button type="submit" class="btn btn-outline-primary btn-sm px-3 w-100">
+                                        <i class="bi bi-cart-plus me-1"></i> Tambah
+                                    </button>
+                                </form>
+                                <a href="<?= base_url('pelanggan/sewa/' . $u['id_unit']) ?>" class="btn btn-primary-custom btn-sm px-3">
+                                    Sewa Langsung <i class="bi bi-chevron-right ms-1"></i>
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>

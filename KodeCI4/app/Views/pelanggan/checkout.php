@@ -3,7 +3,7 @@
 <?= $this->section('content') ?>
 <div class="row justify-content-center">
     <div class="col-lg-8">
-        <a href="<?= base_url('pelanggan/katalog') ?>" class="btn btn-outline-secondary btn-sm rounded-pill mb-3">
+        <a href="<?= base_url('pelanggan/' . (!empty($fromCart) ? 'keranjang' : 'katalog')) ?>" class="btn btn-outline-secondary btn-sm rounded-pill mb-3">
             <i class="bi bi-arrow-left me-1"></i> Kembali ke Katalog
         </a>
 
@@ -15,25 +15,23 @@
             </div>
 
             <!-- Detail Barang Terpilih -->
-            <div class="p-3 bg-light rounded-4 mb-4 border d-flex gap-3 align-items-center">
-                <div class="p-3 bg-white rounded-3 border text-primary">
-                    <i class="bi bi-camera-fill fs-2"></i>
-                </div>
-                <div>
-                    <h5 class="fw-bold text-dark mb-1"><?= esc($unit['nama_barang']) ?></h5>
-                    <div class="small text-muted">
-                        Kode Unit: <b><?= esc($unit['kode_unit']) ?></b> • Kategori: <?= esc($unit['nama_kategori']) ?>
-                    </div>
-                    <div class="fw-bold text-primary mt-1">
-                        Rp <?= number_format($unit['harga_sewa'], 0, ',', '.') ?> <span class="text-muted fw-normal small">/hari</span>
+            <?php foreach ($units as $item): ?>
+                <div class="p-3 bg-light rounded-4 mb-2 border d-flex gap-3 align-items-center">
+                    <div class="p-3 bg-white rounded-3 border text-primary"><i class="bi bi-camera-fill fs-2"></i></div>
+                    <div>
+                        <h5 class="fw-bold text-dark mb-1"><?= esc($item['nama_barang']) ?></h5>
+                        <div class="small text-muted">Kode Unit: <b><?= esc($item['kode_unit']) ?></b> • Kategori: <?= esc($item['nama_kategori']) ?></div>
+                        <div class="fw-bold text-primary mt-1">Rp <?= number_format($item['harga_sewa'], 0, ',', '.') ?> <span class="text-muted fw-normal small">/hari</span></div>
                     </div>
                 </div>
-            </div>
+            <?php endforeach; ?>
 
             <form action="<?= base_url('pelanggan/sewa/process') ?>" method="POST" id="formSewa">
                 <?= csrf_field() ?>
-                <input type="hidden" name="id_unit" value="<?= esc($unit['id_unit']) ?>">
-                <input type="hidden" id="hargaPerHari" value="<?= esc($unit['harga_sewa']) ?>">
+                <?php foreach ($units as $item): ?>
+                    <input type="hidden" name="id_unit[]" value="<?= esc($item['id_unit']) ?>">
+                <?php endforeach; ?>
+                <input type="hidden" id="hargaPerHari" value="<?= esc(array_sum(array_column($units, 'harga_sewa'))) ?>">
 
                 <div class="row g-3 mb-4">
                     <div class="col-md-6">
@@ -85,12 +83,12 @@
                     </div>
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-bold text-dark">Total Biaya Sewa:</span>
-                        <span class="fw-bold text-primary fs-4" id="totalHargaText">Rp <?= number_format($unit['harga_sewa'], 0, ',', '.') ?></span>
+                        <span class="fw-bold text-primary fs-4" id="totalHargaText">Rp <?= number_format(array_sum(array_column($units, 'harga_sewa')), 0, ',', '.') ?></span>
                     </div>
                 </div>
 
                 <div class="d-flex justify-content-end gap-2">
-                    <a href="<?= base_url('pelanggan/katalog') ?>" class="btn btn-light rounded-3 px-4">Batal</a>
+                    <a href="<?= base_url('pelanggan/' . (!empty($fromCart) ? 'keranjang' : 'katalog')) ?>" class="btn btn-light rounded-3 px-4">Batal</a>
                     <button type="submit" class="btn btn-primary-custom rounded-3 px-4 py-2">
                         Ajukan Pemesanan Sekarang <i class="bi bi-arrow-right ms-1"></i>
                     </button>
@@ -102,24 +100,25 @@
 
 <script>
     function updateDurasi() {
-        const start = new Date(document.getElementById('tanggalSewa').value);
-        const end = new Date(document.getElementById('tanggalKembali').value);
+        const startInput = document.getElementById('tanggalSewa');
+        const endInput = document.getElementById('tanggalKembali');
+        const start = new Date(startInput.value + 'T00:00:00');
+        let end = new Date(endInput.value + 'T00:00:00');
         const harga = parseFloat(document.getElementById('hargaPerHari').value);
-
-        if (end < start) {
-            document.getElementById('tanggalKembali').value = document.getElementById('tanggalSewa').value;
+        const minEnd = new Date(start);
+        minEnd.setDate(minEnd.getDate() + 1);
+        endInput.min = minEnd.toISOString().slice(0, 10);
+        if (end <= start) {
+            end = minEnd;
+            endInput.value = end.toISOString().slice(0, 10);
         }
-
-        const diffTime = Math.abs(end - start);
-        let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        if (diffDays === 0) diffDays = 1;
-
+        const diffDays = Math.max(1, Math.round((end - start) / 86400000));
         const total = diffDays * harga;
         document.getElementById('durasiText').innerText = diffDays + ' Hari';
         document.getElementById('totalHargaText').innerText = 'Rp ' + total.toLocaleString('id-ID');
     }
-
     document.getElementById('tanggalSewa').addEventListener('change', updateDurasi);
     document.getElementById('tanggalKembali').addEventListener('change', updateDurasi);
+    updateDurasi();
 </script>
 <?= $this->endSection() ?>

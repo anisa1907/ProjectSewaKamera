@@ -111,6 +111,11 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link <?= str_starts_with(uri_string(), 'pelanggan/keranjang') || uri_string() === 'pelanggan/checkout' ? 'active' : '' ?>" href="<?= base_url('pelanggan/keranjang') ?>">
+                                <i class="bi bi-cart3 me-1"></i> Keranjang <span class="badge bg-primary ms-1"><?= count(session()->get('keranjang_sewa') ?? []) ?></span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link <?= uri_string() === 'pelanggan/status-sewa' ? 'active' : '' ?>" href="<?= base_url('pelanggan/status-sewa') ?>">
                                 <i class="bi bi-receipt me-1"></i> Status & Invoice
                             </a>
