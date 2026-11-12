@@ -3,24 +3,15 @@
 namespace App\Controllers\Pelanggan;
 
 use App\Controllers\BaseController;
-use App\Models\InventoryModel;
-use App\Models\UnitModel;
 use App\Models\KategoriModel;
-use App\Models\SewaModel;
-use App\Models\DetailSewaModel;
-use App\Models\PembayaranModel;
 
 class Katalog extends BaseController
 {
-    protected $inventoryModel;
-    protected $unitModel;
     protected $kategoriModel;
 
     public function __construct()
     {
-        $this->inventoryModel = new InventoryModel();
-        $this->unitModel      = new UnitModel();
-        $this->kategoriModel  = new KategoriModel();
+        $this->kategoriModel = new KategoriModel();
     }
 
     public function index()
@@ -28,94 +19,84 @@ class Katalog extends BaseController
         $kategoriId = $this->request->getGet('kategori');
         $db = \Config\Database::connect();
 
-        echo '<pre>';
-
-        echo "DATABASE YANG DIGUNAKAN APLIKASI:\n";
-
-        print_r(
-            $db->query("SELECT DATABASE() AS nama_database")->getRowArray()
-        );
-
-        echo "\nJUMLAH INVENTORY:\n";
-
-        print_r(
-            $db->query("SELECT COUNT(*) AS total FROM inventory")->getRowArray()
-        );
-
-        echo "\nJUMLAH UNIT TERSEDIA:\n";
-
-        print_r(
-            $db->query("
-                SELECT COUNT(*) AS total
-                FROM unit
-                WHERE status_unit = 'tersedia'
-            ")->getRowArray()
-        );
-
-        echo '</pre>';
-        exit;
-
-        // Ambil inventory sebagai dasar dan INNER JOIN ke unit.
-        // Filter status_unit dilakukan dengan WHERE biasa (bukan kondisi
-        // HAVING agregat) agar semua produk yang punya minimal satu unit
-        // tersedia ikut muncul pada berbagai konfigurasi MySQL/MariaDB.
+        // Inventory menjadi tabel utama agar produk tetap tampil walaupun
+        // seluruh unitnya sedang disewa atau dalam perawatan.
         $builder = $db->table('inventory i')
-            ->select('i.id_inv, i.kode_barang, i.nama_barang, i.merk, i.tipe, i.deskripsi AS desc_barang, i.spesifikasi, k.nama_kategori, COUNT(u.id_unit) AS jumlah_tersedia')
-            ->join('kategori k', 'k.id_kategori = i.id_kategori')
-            ->join('unit u', 'u.id_inv = i.id_inv')
-            ->where('u.status_unit', 'tersedia')
-            ->groupBy(['i.id_inv', 'i.kode_barang', 'i.nama_barang', 'i.merk', 'i.tipe', 'i.deskripsi', 'i.spesifikasi', 'k.nama_kategori']);
+            ->select('i.id_inv, i.kode_barang, i.nama_barang, i.merk, i.tipe, i.deskripsi AS desc_barang, i.spesifikasi, k.nama_kategori')
+            ->join('kategori k', 'k.id_kategori = i.id_kategori', 'left');
 
         if ($kategoriId !== null && $kategoriId !== '') {
             $builder->where('i.id_kategori', (int) $kategoriId);
         }
 
-        $produkRows = $builder
+        $products = $builder
             ->orderBy('k.nama_kategori', 'ASC')
             ->orderBy('i.nama_barang', 'ASC')
-            ->get()->getResultArray();
+            ->get()
+            ->getResultArray();
 
-        $products = [];
+        // Ambil semua unit (tersedia, disewa, maupun maintenance) sekali query.
+        // Data semua unit dipakai untuk mencari foto, sedangkan pilihan sewa
+        // hanya mengambil unit dengan status tersedia.
+        $unitByInventory = [];
+        if (!empty($products)) {
+            $inventoryIds = array_map('intval', array_column($products, 'id_inv'));
+            $allUnits = $db->table('unit')
+                ->select('id_unit, id_inv, kode_unit, harga_sewa, kondisi, status_unit')
+                ->whereIn('id_inv', $inventoryIds)
+                ->orderBy('kode_unit', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            foreach ($allUnits as $unit) {
+                $unitByInventory[(int) $unit['id_inv']][] = $unit;
+            }
+        }
+
         $uploadPath = FCPATH . 'uploads' . DIRECTORY_SEPARATOR . 'produk' . DIRECTORY_SEPARATOR;
 
-        foreach ($produkRows as $produk) {
-            // Ambil unit tersedia milik produk ini secara eksplisit.
-            $units = $db->table('unit')
-                ->select('id_unit, kode_unit, harga_sewa, kondisi')
-                ->where('id_inv', (int) $produk['id_inv'])
-                ->where('status_unit', 'tersedia')
-                ->orderBy('kode_unit', 'ASC')
-                ->get()->getResultArray();
+        foreach ($products as &$produk) {
+            $idInv = (int) $produk['id_inv'];
+            $allProductUnits = $unitByInventory[$idInv] ?? [];
 
-            $produk['units'] = array_map(static function ($unit) {
+            $availableUnits = array_values(array_filter(
+                $allProductUnits,
+                static fn(array $unit): bool => strtolower(trim((string) $unit['status_unit'])) === 'tersedia'
+            ));
+
+            $produk['units'] = array_map(static function (array $unit): array {
                 return [
                     'id_unit' => (int) $unit['id_unit'],
                     'kode_unit' => $unit['kode_unit'],
                     'harga_sewa' => (float) $unit['harga_sewa'],
                     'kondisi' => $unit['kondisi'],
                 ];
-            }, $units);
+            }, $availableUnits);
             $produk['jumlah_tersedia'] = count($produk['units']);
+            $produk['total_unit'] = count($allProductUnits);
             $produk['gambar_url'] = null;
 
-            // Cari gambar berdasarkan kode barang dan seluruh kode unit.
+            // Prioritaskan foto dengan kode barang, lalu cari berdasarkan
+            // SEMUA kode unit termasuk unit yang sedang disewa/maintenance.
             $namaDasar = [preg_replace('/[^A-Za-z0-9_-]/', '', (string) $produk['kode_barang'])];
-            foreach ($produk['units'] as $unit) {
+            foreach ($allProductUnits as $unit) {
                 $namaDasar[] = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $unit['kode_unit']);
             }
 
-            foreach ($namaDasar as $dasar) {
+            foreach (array_unique($namaDasar) as $dasar) {
+                if ($dasar === '') {
+                    continue;
+                }
                 foreach (['webp', 'jpg', 'jpeg', 'png'] as $ext) {
                     $namaFile = $dasar . '.' . $ext;
-                    if ($dasar !== '' && is_file($uploadPath . $namaFile)) {
+                    if (is_file($uploadPath . $namaFile)) {
                         $produk['gambar_url'] = base_url('uploads/produk/' . rawurlencode($namaFile));
                         break 2;
                     }
                 }
             }
-
-            $products[] = $produk;
         }
+        unset($produk);
 
         $kategoriList = $this->kategoriModel->orderBy('nama_kategori', 'ASC')->findAll();
 
@@ -126,5 +107,4 @@ class Katalog extends BaseController
             'selectedKat' => $kategoriId,
         ]);
     }
-
 }
